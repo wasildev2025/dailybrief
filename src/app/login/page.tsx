@@ -41,10 +41,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left side - branding */}
-      <div className="hidden lg:flex lg:w-[480px] bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 flex-col justify-between p-12 text-white relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-[520px] bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 flex-col justify-between p-12 text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 -left-10 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
           <div className="absolute bottom-20 right-0 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
         </div>
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
@@ -53,20 +54,36 @@ export default function LoginPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">Daily Brief</h1>
-              <p className="text-xs text-white/60 font-medium uppercase tracking-widest">OAS Dev Team</p>
+              <p className="text-[10px] text-white/50 font-medium uppercase tracking-[0.2em]">Team Management Platform</p>
             </div>
           </div>
         </div>
-        <div className="relative z-10">
-          <h2 className="text-3xl font-bold leading-tight mb-3">
+        <div className="relative z-10 space-y-6">
+          <h2 className="text-3xl font-bold leading-tight">
             Streamline your<br />daily work updates
           </h2>
           <p className="text-sm text-white/70 leading-relaxed max-w-sm">
             Submit tasks, track attendance, and generate professional daily briefs for management — all in one place.
           </p>
+          <div className="flex gap-6 pt-2">
+            <div>
+              <p className="text-2xl font-bold">100%</p>
+              <p className="text-[10px] text-white/50 uppercase tracking-wider">Visibility</p>
+            </div>
+            <div className="w-px bg-white/20" />
+            <div>
+              <p className="text-2xl font-bold">Real-time</p>
+              <p className="text-[10px] text-white/50 uppercase tracking-wider">Reports</p>
+            </div>
+            <div className="w-px bg-white/20" />
+            <div>
+              <p className="text-2xl font-bold">Simple</p>
+              <p className="text-[10px] text-white/50 uppercase tracking-wider">Workflow</p>
+            </div>
+          </div>
         </div>
         <div className="relative z-10 text-xs text-white/40">
-          &copy; {new Date().getFullYear()} OAS Development Team
+          &copy; {new Date().getFullYear()} OAS Development Team. Built for modern teams.
         </div>
       </div>
 

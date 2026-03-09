@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Daily Work Update System",
-  description: "OAS Dev - Daily Brief Management System",
+  title: "Daily Brief — Team Work Update Platform",
+  description: "Enterprise-grade daily work update management. Track attendance, compile reports, and streamline team communication.",
+  keywords: ["daily brief", "work updates", "team management", "attendance tracking", "project reports"],
 };
 
 export default function RootLayout({

@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   ClipboardList,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Zap,
@@ -25,6 +26,7 @@ interface SidebarProps {
 
 const adminLinks = [
   { href: "/dashboard/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/admin/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/dashboard/admin/reports", label: "Reports", icon: FileText },
   { href: "/dashboard/admin/users", label: "Users", icon: Users },
   { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
@@ -32,6 +34,7 @@ const adminLinks = [
 
 const memberLinks = [
   { href: "/dashboard/member", label: "My Updates", icon: ClipboardList },
+  { href: "/dashboard/member/calendar", label: "Calendar", icon: CalendarDays },
 ];
 
 export function Sidebar({ role, userName }: SidebarProps) {
@@ -89,22 +92,28 @@ export function Sidebar({ role, userName }: SidebarProps) {
           </p>
         )}
         {links.map((link) => {
-          const isActive = pathname === link.href;
+          const isActive = pathname === link.href || (link.href !== "/dashboard/admin" && link.href !== "/dashboard/member" && pathname.startsWith(link.href));
           return (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150",
+                "group flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200",
                 isActive
-                  ? "bg-indigo-50 text-indigo-700 shadow-[0_1px_2px_rgba(99,102,241,0.1)]"
+                  ? "bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 shadow-[0_1px_3px_rgba(99,102,241,0.12)]"
                   : "text-gray-500 hover:bg-gray-50 hover:text-gray-800",
                 collapsed && "justify-center px-0"
               )}
               title={collapsed ? link.label : undefined}
             >
-              <link.icon className={cn("h-[18px] w-[18px] flex-shrink-0", isActive && "text-indigo-600")} />
+              <link.icon className={cn(
+                "h-[18px] w-[18px] flex-shrink-0 transition-colors",
+                isActive ? "text-indigo-600" : "text-gray-400 group-hover:text-gray-600"
+              )} />
               {!collapsed && <span>{link.label}</span>}
+              {isActive && !collapsed && (
+                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              )}
             </Link>
           );
         })}

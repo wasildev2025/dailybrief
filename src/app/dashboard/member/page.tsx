@@ -6,7 +6,7 @@ import { TaskForm } from "@/components/member/task-form";
 import { AttendanceForm } from "@/components/member/attendance-form";
 import { UpdateHistory } from "@/components/member/update-history";
 import { useSession } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, ClipboardList } from "lucide-react";
 import { formatDateForDisplay } from "@/lib/date-utils";
 
 export default function MemberDashboard() {
@@ -26,11 +26,16 @@ export default function MemberDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-            My Daily Updates
-          </h1>
-          <p className="text-[13px] text-gray-500 mt-0.5">
-            {formatDateForDisplay(selectedDate)}
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+              <ClipboardList className="h-4 w-4 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+              My Daily Updates
+            </h1>
+          </div>
+          <p className="text-[13px] text-gray-500">
+            {formatDateForDisplay(selectedDate)} — Welcome back, {session?.user?.name?.split(" ")[0] || "there"}
           </p>
         </div>
         <DatePickerField

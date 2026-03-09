@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/shared/sidebar";
+import { PageHeader } from "@/components/shared/page-header";
 import { AuthSessionProvider } from "@/components/shared/session-provider";
 
 export default async function DashboardLayout({
@@ -21,8 +22,9 @@ export default async function DashboardLayout({
           role={session.user.role}
           userName={session.user.name || "User"}
         />
-        <main className="flex-1 overflow-auto">
-          <div className="px-6 py-6 lg:px-10 lg:py-8 max-w-[1280px] mx-auto">
+        <main className="flex-1 overflow-auto flex flex-col">
+          <PageHeader />
+          <div className="flex-1 px-6 py-6 lg:px-10 lg:py-8 max-w-[1400px] mx-auto w-full">
             {children}
           </div>
         </main>
