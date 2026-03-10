@@ -4,6 +4,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateKPIInsights } from "@/lib/gemini";
 
+export interface DomainBreakdown {
+  domain: string;
+  color: string;
+  count: number;
+  percentage: number;
+}
+
 export interface MemberKPI {
   userId: string;
   name: string;
@@ -22,6 +29,57 @@ export interface MemberKPI {
   taskCompletionRate: number;
   onTimeSubmissions: number;
   onTimeRate: number;
+  domains: DomainBreakdown[];
+  primaryDomain: string;
+}
+
+const DOMAIN_PATTERNS: { domain: string; color: string; keywords: RegExp }[] = [
+  { domain: "AI / ML", color: "#8b5cf6", keywords: /\b(ai|machine learning|ml|deep learning|neural|llm|gpt|gemini|model|training|nlp|ray|tensor|pytorch|langchain|openai|prompt|embedding|vector|rag|fine.?tun)/i },
+  { domain: "Frontend", color: "#3b82f6", keywords: /\b(frontend|front.?end|react|next\.?js|vue|angular|css|tailwind|html|ui|ux|component|page|layout|responsive|browser|dom|jsx|tsx|styled|sass|scss)/i },
+  { domain: "Backend", color: "#10b981", keywords: /\b(backend|back.?end|api|server|node|express|fastapi|django|flask|rest|graphql|endpoint|middleware|controller|route|prisma|database|sql|postgres|mongo|redis|orm)/i },
+  { domain: "Mobile", color: "#f59e0b", keywords: /\b(mobile|android|ios|react.?native|flutter|swift|kotlin|app.?store|play.?store|expo)/i },
+  { domain: "DevOps", color: "#ef4444", keywords: /\b(devops|deploy|ci.?cd|docker|kubernetes|k8s|aws|azure|gcp|cloud|pipeline|jenkins|github.?actions|terraform|nginx|linux|server|infra|monitoring)/i },
+  { domain: "Testing / QA", color: "#ec4899", keywords: /\b(test|testing|qa|quality|bug|fix|debug|jest|cypress|playwright|selenium|unit.?test|e2e|integration.?test)/i },
+  { domain: "Design", color: "#06b6d4", keywords: /\b(design|figma|sketch|wireframe|mockup|prototype|typography|branding|logo|illustration|photoshop|adobe)/i },
+  { domain: "Documentation", color: "#64748b", keywords: /\b(document|readme|docs|wiki|guide|tutorial|write.?up|specification|requirement)/i },
+  { domain: "Research", color: "#a855f7", keywords: /\b(research|study|learn|course|tutorial|video|training|certification|explore|investigate|poc|proof.?of.?concept)/i },
+  { domain: "Management", color: "#f97316", keywords: /\b(meeting|standup|review|planning|sprint|scrum|agile|jira|ticket|task.?assign|coordination|client|stakeholder)/i },
+];
+
+function classifyTaskDomains(taskTexts: string[]): DomainBreakdown[] {
+  const domainCounts: Record<string, { color: string; count: number }> = {};
+
+  for (const text of taskTexts) {
+    const plain = text.replace(/<[^>]*>/g, " ");
+    const matched = new Set<string>();
+
+    for (const pattern of DOMAIN_PATTERNS) {
+      if (pattern.keywords.test(plain) && !matched.has(pattern.domain)) {
+        matched.add(pattern.domain);
+        if (!domainCounts[pattern.domain]) {
+          domainCounts[pattern.domain] = { color: pattern.color, count: 0 };
+        }
+        domainCounts[pattern.domain].count++;
+      }
+    }
+
+    if (matched.size === 0) {
+      if (!domainCounts["General"]) {
+        domainCounts["General"] = { color: "#94a3b8", count: 0 };
+      }
+      domainCounts["General"].count++;
+    }
+  }
+
+  const total = taskTexts.length || 1;
+  return Object.entries(domainCounts)
+    .map(([domain, { color, count }]) => ({
+      domain,
+      color,
+      count,
+      percentage: Math.round((count / total) * 100),
+    }))
+    .sort((a, b) => b.count - a.count);
 }
 
 export async function getTeamKPIData(days = 30): Promise<MemberKPI[]> {
@@ -41,7 +99,10 @@ export async function getTeamKPIData(days = 30): Promise<MemberKPI[]> {
         where: { date: { gte: since } },
         include: {
           tasks: {
-            include: { taskStatus: true },
+            include: {
+              taskStatus: true,
+              subTasks: true,
+            },
           },
         },
       },
@@ -77,6 +138,13 @@ export async function getTeamKPIData(days = 30): Promise<MemberKPI[]> {
     const onTimeSubmissions = submittedUpdates.length;
     const onTimeRate = totalWorkDays > 0 ? Math.round((onTimeSubmissions / totalWorkDays) * 100) : 0;
 
+    const taskTexts = allTasks.map((t) => {
+      const subTexts = t.subTasks?.map((st: any) => st.text).join(" ") || "";
+      return `${t.text} ${subTexts}`;
+    });
+    const domains = classifyTaskDomains(taskTexts);
+    const primaryDomain = domains.length > 0 ? domains[0].domain : "General";
+
     return {
       userId: member.id,
       name: member.name,
@@ -95,6 +163,8 @@ export async function getTeamKPIData(days = 30): Promise<MemberKPI[]> {
       taskCompletionRate,
       onTimeSubmissions,
       onTimeRate,
+      domains,
+      primaryDomain,
     };
   });
 }
@@ -102,6 +172,10 @@ export async function getTeamKPIData(days = 30): Promise<MemberKPI[]> {
 export async function generateMemberInsights(kpi: MemberKPI): Promise<string> {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") throw new Error("Unauthorized");
+
+  const domainSummary = kpi.domains.length > 0
+    ? kpi.domains.map((d) => `${d.domain}: ${d.count} tasks (${d.percentage}%)`).join(", ")
+    : "Not enough data to classify";
 
   const prompt = `You are a professional HR/Team Lead KPI analyst for a software development team.
 
@@ -114,15 +188,18 @@ KPI Data:
 - Average Tasks/Day: ${kpi.avgTasksPerDay}
 - Task Completion Rate: ${kpi.taskCompletionRate}% (${kpi.completedTasks} completed out of ${kpi.totalTasks})
 - On-Time Submission Rate: ${kpi.onTimeRate}%
+- Primary Work Domain: ${kpi.primaryDomain}
+- Work Domain Breakdown: ${domainSummary}
 
 Provide your analysis in this format:
 1. **Performance Rating** (Excellent/Good/Average/Needs Improvement)
-2. **Key Strengths** (2-3 bullet points)
-3. **Areas for Improvement** (2-3 bullet points)
-4. **Actionable Recommendations** (2-3 specific recommendations)
-5. **One-Line Summary** suitable for management reporting
+2. **Primary Focus Area**: Based on their work domains, what is this member's specialization and how focused are they?
+3. **Key Strengths** (2-3 bullet points)
+4. **Areas for Improvement** (2-3 bullet points)
+5. **Actionable Recommendations** (2-3 specific recommendations considering their domain)
+6. **One-Line Summary** suitable for management reporting
 
-Keep it concise, professional, and constructive. No longer than 250 words total.`;
+Keep it concise, professional, and constructive. No longer than 300 words total.`;
 
   return generateKPIInsights(prompt);
 }
@@ -132,7 +209,7 @@ export async function generateTeamSummary(kpis: MemberKPI[]): Promise<string> {
   if (!session?.user || session.user.role !== "ADMIN") throw new Error("Unauthorized");
 
   const teamData = kpis.map((k) =>
-    `- ${k.name}: Attendance ${k.attendanceRate}%, Submission ${k.taskSubmissionRate}%, Tasks ${k.totalTasks}, Completion ${k.taskCompletionRate}%`
+    `- ${k.name} [${k.primaryDomain}]: Attendance ${k.attendanceRate}%, Submission ${k.taskSubmissionRate}%, Tasks ${k.totalTasks}, Completion ${k.taskCompletionRate}%`
   ).join("\n");
 
   const avgAttendance = Math.round(kpis.reduce((s, k) => s + k.attendanceRate, 0) / kpis.length);

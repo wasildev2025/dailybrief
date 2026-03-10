@@ -67,7 +67,10 @@ export function MobileNav({ role, userName }: MobileNavProps) {
       {open && (
         <div className="bg-white border-b border-gray-100 px-4 py-3 space-y-1 shadow-lg">
           {links.map((link) => {
-            const isActive = pathname === link.href || (link.href !== "/dashboard/admin" && link.href !== "/dashboard/member" && pathname.startsWith(link.href));
+            const hasChildLink = links.some((other) => other.href !== link.href && other.href.startsWith(link.href));
+            const isActive = hasChildLink
+              ? pathname === link.href
+              : pathname === link.href || (link.href !== "/dashboard/admin" && link.href !== "/dashboard/member" && link.href !== "/dashboard/viewer" && pathname.startsWith(link.href));
             return (
               <Link
                 key={link.href}

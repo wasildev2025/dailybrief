@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getTeamKPIData, generateMemberInsights, generateTeamSummary, MemberKPI } from "@/actions/kpi-actions";
+import { getTeamKPIData, generateMemberInsights, generateTeamSummary, MemberKPI, DomainBreakdown } from "@/actions/kpi-actions";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -147,7 +147,17 @@ export default function KPIPage() {
                     {kpi.name.split(" ").pop()?.charAt(0)}
                   </div>
                   <div>
-                    <p className="text-[14px] font-semibold text-gray-900">{kpi.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[14px] font-semibold text-gray-900">{kpi.name}</p>
+                      {kpi.primaryDomain && (
+                        <span
+                          className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full text-white"
+                          style={{ backgroundColor: kpi.domains[0]?.color || "#94a3b8" }}
+                        >
+                          {kpi.primaryDomain}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-gray-400">{kpi.email}</p>
                   </div>
                 </div>
@@ -181,6 +191,32 @@ export default function KPIPage() {
                   <DetailMetric label="Total Tasks" value={kpi.totalTasks} />
                   <DetailMetric label="Avg/Day" value={kpi.avgTasksPerDay} />
                 </div>
+
+                {/* Work Domain Breakdown */}
+                {kpi.domains.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Work Domains</p>
+                    <div className="flex gap-1 h-3 rounded-full overflow-hidden mb-2">
+                      {kpi.domains.map((d) => (
+                        <div
+                          key={d.domain}
+                          className="h-full transition-all duration-500"
+                          style={{ backgroundColor: d.color, width: `${d.percentage}%`, minWidth: d.percentage > 0 ? "4px" : "0" }}
+                          title={`${d.domain}: ${d.percentage}%`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      {kpi.domains.map((d) => (
+                        <div key={d.domain} className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                          <span className="text-[11px] text-gray-600">{d.domain}</span>
+                          <span className="text-[10px] text-gray-400 font-medium">{d.count} ({d.percentage}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Progress bars */}
                 <div className="space-y-2.5 mb-3">
