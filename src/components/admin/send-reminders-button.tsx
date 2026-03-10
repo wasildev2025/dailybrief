@@ -26,15 +26,13 @@ export function SendRemindersButton() {
   };
 
   return (
-    <Button
+    <button
       onClick={handleSend}
       disabled={loading}
-      variant="outline"
-      size="sm"
-      className="text-[12px] h-8"
+      className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm hover:bg-white/25 disabled:opacity-50 transition-colors text-white text-[12px] font-medium rounded-lg px-3.5 py-2"
     >
-      {loading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Bell className="h-3.5 w-3.5 mr-1.5" />}
+      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bell className="h-3.5 w-3.5" />}
       Send Reminders
-    </Button>
+    </button>
   );
 }

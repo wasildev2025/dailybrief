@@ -29,7 +29,7 @@ export async function createUser(data: {
   name: string;
   email: string;
   password: string;
-  role: "ADMIN" | "MEMBER";
+  role: "ADMIN" | "MEMBER" | "VIEWER";
   displayOrder: number;
 }) {
   const session = await auth();
@@ -63,7 +63,7 @@ export async function updateUser(
   data: {
     name?: string;
     email?: string;
-    role?: "ADMIN" | "MEMBER";
+    role?: "ADMIN" | "MEMBER" | "VIEWER";
     displayOrder?: number;
     isActive?: boolean;
   }

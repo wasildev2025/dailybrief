@@ -10,6 +10,7 @@ const breadcrumbLabels: Record<string, string> = {
   dashboard: "Dashboard",
   admin: "Admin",
   member: "Member",
+  viewer: "Executive",
   calendar: "Calendar",
   reports: "Reports",
   range: "Date Range",
@@ -30,7 +31,7 @@ export function PageHeader() {
   }));
 
   return (
-    <div className="flex items-center justify-between h-12 px-4 sm:px-6 lg:px-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
+    <div className="relative z-50 flex items-center justify-between h-12 px-4 sm:px-6 lg:px-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
       <nav className="flex items-center gap-1 text-[12px]">
         <Link href="/dashboard" className="text-gray-400 hover:text-gray-600 transition-colors">
           <Home className="h-3.5 w-3.5" />

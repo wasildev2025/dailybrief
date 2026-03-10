@@ -32,11 +32,16 @@ const memberLinks = [
   { href: "/dashboard/member/calendar", label: "Calendar", icon: CalendarDays },
 ];
 
+const viewerLinks = [
+  { href: "/dashboard/viewer", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/viewer/calendar", label: "Calendar", icon: CalendarDays },
+];
+
 export function MobileNav({ role, userName }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const links = role === "ADMIN" ? adminLinks : memberLinks;
+  const links = role === "ADMIN" ? adminLinks : role === "VIEWER" ? viewerLinks : memberLinks;
 
   const handleLogout = async () => {
     await logoutAction();

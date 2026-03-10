@@ -3,13 +3,10 @@ import { getAttendanceStats, getAllAttendanceForDate } from "@/actions/attendanc
 import { StatCard } from "@/components/shared/stat-card";
 import {
   Users, CheckCircle, Clock, AlertCircle, FileText,
-  UserCheck, UserX, MapPin, CalendarOff,
-  ArrowRight, Sparkles, CalendarDays, BarChart3, ShieldCheck,
+  UserCheck, UserX, MapPin, CalendarOff, ShieldCheck, Eye,
 } from "lucide-react";
-import { AdminDateView } from "@/components/admin/admin-date-view";
-import { SendRemindersButton } from "@/components/admin/send-reminders-button";
 import { formatDateISO, formatDateForDisplay } from "@/lib/date-utils";
-import Link from "next/link";
+import { ViewerDateView } from "@/components/viewer/viewer-date-view";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +17,7 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-export default async function AdminDashboard() {
+export default async function ViewerDashboard() {
   const today = formatDateISO(new Date());
   const [stats, attStats, updates, attendance] = await Promise.all([
     getDashboardStats(),
@@ -30,13 +27,10 @@ export default async function AdminDashboard() {
   ]);
 
   const memberUpdates = updates.filter((u) => u.user.role === "MEMBER");
-  const submittedMembers = memberUpdates.filter((u) => u.update?.status === "SUBMITTED" || u.update?.status === "REVIEWED" || u.update?.status === "FINALIZED");
-  const pendingMembers = memberUpdates.filter((u) => !u.update || u.update.status === "DRAFT");
 
   return (
     <div className="space-y-6">
-      {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 rounded-2xl p-6 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 rounded-2xl p-6 text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
           <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
@@ -44,21 +38,14 @@ export default async function AdminDashboard() {
         <div className="relative z-10">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">{getGreeting()}, Admin</h1>
-              <p className="text-white/70 text-sm mt-1">{formatDateForDisplay(new Date())} — Here&apos;s your team&apos;s status today</p>
+              <h1 className="text-2xl font-bold tracking-tight">{getGreeting()}</h1>
+              <p className="text-white/70 text-sm mt-1">{formatDateForDisplay(new Date())} — Team overview (View Only)</p>
             </div>
-            <div className="flex gap-2">
-              <SendRemindersButton />
-              <Link
-                href="/dashboard/admin/reports"
-                className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm hover:bg-white/25 transition-colors text-white text-[12px] font-medium rounded-lg px-3.5 py-2"
-              >
-                <Sparkles className="h-3.5 w-3.5" /> Generate Brief
-              </Link>
+            <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm text-white/80 text-[12px] font-medium rounded-lg px-3.5 py-2">
+              <Eye className="h-3.5 w-3.5" /> Executive View
             </div>
           </div>
 
-          {/* Quick Stats in header */}
           <div className="grid grid-cols-4 gap-4 mt-5">
             <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3">
               <p className="text-3xl font-bold">{stats.submittedToday + stats.reviewedToday + (stats.finalizedToday || 0)}</p>
@@ -80,54 +67,8 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Link href="/dashboard/admin/reports" className="group flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all hover:border-indigo-100">
-          <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
-            <FileText className="h-5 w-5 text-indigo-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-gray-900">Generate Brief</p>
-            <p className="text-[11px] text-gray-400">Create today&apos;s report</p>
-          </div>
-          <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-indigo-500 transition-colors" />
-        </Link>
-        <Link href="/dashboard/admin/calendar" className="group flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all hover:border-blue-100">
-          <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-            <CalendarDays className="h-5 w-5 text-blue-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-gray-900">Calendar</p>
-            <p className="text-[11px] text-gray-400">Monthly overview</p>
-          </div>
-          <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
-        </Link>
-        <Link href="/dashboard/admin/kpi" className="group flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all hover:border-violet-100">
-          <div className="h-10 w-10 rounded-xl bg-violet-50 flex items-center justify-center group-hover:bg-violet-100 transition-colors">
-            <BarChart3 className="h-5 w-5 text-violet-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-gray-900">KPI Insights</p>
-            <p className="text-[11px] text-gray-400">AI-powered analytics</p>
-          </div>
-          <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-violet-500 transition-colors" />
-        </Link>
-        <Link href="/dashboard/admin/users" className="group flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all hover:border-emerald-100">
-          <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
-            <Users className="h-5 w-5 text-emerald-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-gray-900">Manage Team</p>
-            <p className="text-[11px] text-gray-400">Add/edit members</p>
-          </div>
-          <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-emerald-500 transition-colors" />
-        </Link>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Stats Column */}
         <div className="space-y-5">
-          {/* Work Update Stats */}
           <div className="bg-white rounded-xl border border-gray-100 p-5">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Work Updates</p>
             <div className="grid grid-cols-2 gap-3">
@@ -139,7 +80,6 @@ export default async function AdminDashboard() {
             </div>
           </div>
 
-          {/* Attendance Stats */}
           <div className="bg-white rounded-xl border border-gray-100 p-5">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Attendance</p>
             <div className="grid grid-cols-2 gap-3">
@@ -151,7 +91,6 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
-        {/* Team Status Grid */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 p-5">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Team Status Today</p>
           <div className="space-y-2.5">
@@ -161,14 +100,13 @@ export default async function AdminDashboard() {
               const taskCount = update?.tasks?.length || 0;
 
               return (
-                <div key={user.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/70 hover:bg-gray-50 transition-colors">
+                <div key={user.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/70">
                   <div className="h-9 w-9 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-[12px] font-bold text-gray-600 flex-shrink-0">
                     {user.name.split(" ").pop()?.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-semibold text-gray-900 truncate">{user.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      {/* Attendance pill */}
                       {attStatus ? (
                         <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
                           attStatus === "PRESENT" ? "bg-emerald-50 text-emerald-700" :
@@ -208,8 +146,7 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      {/* Full Task Management */}
-      <AdminDateView />
+      <ViewerDateView />
     </div>
   );
 }

@@ -263,7 +263,7 @@ export async function addAdminNote(updateId: string, note: string) {
 
 export async function getAllUpdatesForDate(date: string) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "VIEWER")) {
     throw new Error("Unauthorized");
   }
 
@@ -369,14 +369,14 @@ export async function isDateLocked(date: string) {
 
 export async function getDashboardStats() {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "VIEWER")) {
     throw new Error("Unauthorized");
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [totalMembers, submittedToday, draftToday, reviewedToday] =
+  const [totalMembers, submittedToday, draftToday, reviewedToday, finalizedToday] =
     await Promise.all([
       prisma.user.count({ where: { role: "MEMBER", isActive: true } }),
       prisma.dailyUpdate.count({
@@ -388,6 +388,9 @@ export async function getDashboardStats() {
       prisma.dailyUpdate.count({
         where: { date: today, status: "REVIEWED" },
       }),
+      prisma.dailyUpdate.count({
+        where: { date: today, status: "FINALIZED" },
+      }),
     ]);
 
   return {
@@ -395,7 +398,8 @@ export async function getDashboardStats() {
     submittedToday,
     draftToday,
     reviewedToday,
-    pendingToday: totalMembers - submittedToday - reviewedToday,
+    finalizedToday,
+    pendingToday: totalMembers - submittedToday - reviewedToday - finalizedToday - draftToday,
   };
 }
 

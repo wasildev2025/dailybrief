@@ -102,7 +102,7 @@ export async function adminSaveAttendance(
 
 export async function getAllAttendanceForDate(date: string) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "VIEWER")) {
     throw new Error("Unauthorized");
   }
 
@@ -129,7 +129,7 @@ export async function getAllAttendanceForDate(date: string) {
 
 export async function getAttendanceStats(date: string) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "VIEWER")) {
     throw new Error("Unauthorized");
   }
 

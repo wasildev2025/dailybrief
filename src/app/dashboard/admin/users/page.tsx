@@ -51,7 +51,7 @@ export default function UsersPage() {
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formPassword, setFormPassword] = useState("");
-  const [formRole, setFormRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
+  const [formRole, setFormRole] = useState<"ADMIN" | "MEMBER" | "VIEWER">("MEMBER");
   const [formOrder, setFormOrder] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -156,6 +156,7 @@ export default function UsersPage() {
                     <SelectContent>
                       <SelectItem value="MEMBER">Member</SelectItem>
                       <SelectItem value="ADMIN">Admin</SelectItem>
+                      <SelectItem value="VIEWER">Viewer (Executive)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -203,7 +204,9 @@ export default function UsersPage() {
                     <td className="px-5 py-3">
                       <span className={cn(
                         "text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider",
-                        user.role === "ADMIN" ? "bg-indigo-50 text-indigo-700" : "bg-gray-100 text-gray-600"
+                        user.role === "ADMIN" ? "bg-indigo-50 text-indigo-700" :
+                        user.role === "VIEWER" ? "bg-violet-50 text-violet-700" :
+                        "bg-gray-100 text-gray-600"
                       )}>
                         {user.role}
                       </span>
@@ -253,6 +256,7 @@ export default function UsersPage() {
                   <SelectContent>
                     <SelectItem value="MEMBER">Member</SelectItem>
                     <SelectItem value="ADMIN">Admin</SelectItem>
+                    <SelectItem value="VIEWER">Viewer (Executive)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

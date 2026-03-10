@@ -43,12 +43,17 @@ const memberLinks = [
   { href: "/dashboard/member/calendar", label: "Calendar", icon: CalendarDays },
 ];
 
+const viewerLinks = [
+  { href: "/dashboard/viewer", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/viewer/calendar", label: "Calendar", icon: CalendarDays },
+];
+
 export function Sidebar({ role, userName }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
 
-  const links = role === "ADMIN" ? adminLinks : memberLinks;
+  const links = role === "ADMIN" ? adminLinks : role === "VIEWER" ? viewerLinks : memberLinks;
 
   const handleLogout = async () => {
     await logoutAction();

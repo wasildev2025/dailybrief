@@ -65,7 +65,7 @@ export async function getMyMonthlyCalendar(year: number, month: number): Promise
 
 export async function getTeamMonthlyCalendar(year: number, month: number): Promise<TeamCalendarDayData[]> {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "VIEWER")) {
     throw new Error("Unauthorized");
   }
 
@@ -122,7 +122,7 @@ export async function getTeamMonthlyCalendar(year: number, month: number): Promi
 
 export async function getTeamDayDetail(date: string) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "VIEWER")) {
     throw new Error("Unauthorized");
   }
 

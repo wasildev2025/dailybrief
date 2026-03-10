@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Let auth API routes pass through
   if (pathname.startsWith("/api/auth")) {
     return NextResponse.next();
   }
@@ -14,7 +13,6 @@ export async function middleware(req: NextRequest) {
   try {
     session = await auth();
   } catch {
-    // If auth fails (e.g. missing secret), allow page to handle it
     return NextResponse.next();
   }
 
@@ -23,7 +21,10 @@ export async function middleware(req: NextRequest) {
 
   if (pathname === "/login") {
     if (isLoggedIn) {
-      const dest = role === "ADMIN" ? "/dashboard/admin" : "/dashboard/member";
+      const dest =
+        role === "ADMIN" ? "/dashboard/admin" :
+        role === "VIEWER" ? "/dashboard/viewer" :
+        "/dashboard/member";
       return NextResponse.redirect(new URL(dest, req.url));
     }
     return NextResponse.next();
@@ -33,11 +34,20 @@ export async function middleware(req: NextRequest) {
     if (!isLoggedIn) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
+
     if (pathname.startsWith("/dashboard/admin") && role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard/member", req.url));
+      const dest = role === "VIEWER" ? "/dashboard/viewer" : "/dashboard/member";
+      return NextResponse.redirect(new URL(dest, req.url));
     }
-    if (pathname.startsWith("/dashboard/member") && role === "ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard/admin", req.url));
+
+    if (pathname.startsWith("/dashboard/member") && role !== "MEMBER") {
+      const dest = role === "ADMIN" ? "/dashboard/admin" : "/dashboard/viewer";
+      return NextResponse.redirect(new URL(dest, req.url));
+    }
+
+    if (pathname.startsWith("/dashboard/viewer") && role !== "VIEWER") {
+      const dest = role === "ADMIN" ? "/dashboard/admin" : "/dashboard/member";
+      return NextResponse.redirect(new URL(dest, req.url));
     }
   }
 
