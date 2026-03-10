@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  BarChart3,
 } from "lucide-react";
 import { useState } from "react";
 import { logoutAction } from "@/actions/auth-actions";
@@ -28,6 +29,7 @@ const adminLinks = [
   { href: "/dashboard/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/admin/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/dashboard/admin/reports", label: "Reports", icon: FileText },
+  { href: "/dashboard/admin/kpi", label: "KPI", icon: BarChart3 },
   { href: "/dashboard/admin/users", label: "Users", icon: Users },
   { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
 ];

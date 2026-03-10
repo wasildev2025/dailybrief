@@ -77,6 +77,22 @@ async function main() {
     },
   });
 
+  // Seed default task statuses
+  const existingStatuses = await prisma.taskStatus.count();
+  if (existingStatuses === 0) {
+    const defaults = [
+      { label: "To Do", color: "#6b7280", sortOrder: 0, isDefault: true },
+      { label: "In Progress", color: "#3b82f6", sortOrder: 1 },
+      { label: "Under Dev", color: "#8b5cf6", sortOrder: 2 },
+      { label: "Under Review", color: "#f59e0b", sortOrder: 3 },
+      { label: "Completed", color: "#10b981", sortOrder: 4 },
+    ];
+    for (const d of defaults) {
+      await prisma.taskStatus.create({ data: d });
+    }
+    console.log("Seeded default task statuses");
+  }
+
   // Seed sample data for today
   const today = new Date();
   today.setHours(0, 0, 0, 0);

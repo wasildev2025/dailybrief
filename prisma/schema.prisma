@@ -17,6 +17,7 @@ enum UpdateStatus {
   DRAFT
   SUBMITTED
   REVIEWED
+  FINALIZED
 }
 
 enum AttendanceStatus {
@@ -67,15 +68,32 @@ model DailyTask {
   id            String      @id @default(cuid())
   dailyUpdateId String
   text          String
+  statusId      String?
   sortOrder     Int         @default(0)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
   dailyUpdate   DailyUpdate @relation(fields: [dailyUpdateId], references: [id], onDelete: Cascade)
+  taskStatus    TaskStatus? @relation(fields: [statusId], references: [id])
   subTasks      SubTask[]
 
   @@index([dailyUpdateId])
+  @@index([statusId])
   @@map("daily_tasks")
+}
+
+model TaskStatus {
+  id        String      @id @default(cuid())
+  label     String      @unique
+  color     String      @default("#6366f1")
+  sortOrder Int         @default(0)
+  isDefault Boolean     @default(false)
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+
+  tasks     DailyTask[]
+
+  @@map("task_statuses")
 }
 
 model SubTask {
@@ -138,4 +156,38 @@ model LockedDate {
   lockedById String
 
   @@map("locked_dates")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String
+  entity      String
+  entityId    String?
+  details     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([entity])
+  @@map("activity_logs")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  message     String
+  type        String   @default("info")
+  isRead      Boolean  @default(false)
+  link        String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
 }

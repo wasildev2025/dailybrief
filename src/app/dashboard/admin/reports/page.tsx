@@ -4,9 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { getAllUpdatesForDate, lockDate } from "@/actions/update-actions";
 import { getAllAttendanceForDate } from "@/actions/attendance-actions";
 import { getSettings } from "@/actions/settings-actions";
@@ -32,11 +32,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import jsPDF from "jspdf";
+import * as XLSX from "xlsx";
 
 export default function ReportsPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [reportText, setReportText] = useState("");
+  const [reportHtml, setReportHtml] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -69,6 +71,7 @@ export default function ReportsPage() {
           tasks: d.update?.tasks.map((t) => ({
             text: t.text,
             subTasks: t.subTasks?.map((s) => s.text) || [],
+            statusLabel: (t as any).taskStatus?.label || null,
           })) || [],
         }));
 
@@ -94,6 +97,8 @@ export default function ReportsPage() {
 
       const text = generateReportText(config);
       setReportText(text);
+      const htmlContent = text.replace(/\n/g, "<br>");
+      setReportHtml(htmlContent);
       setGenerated(true);
     } catch {
       toast.error("Failed to generate report");
@@ -201,6 +206,36 @@ export default function ReportsPage() {
     }
   };
 
+  const handleDownloadXlsx = () => {
+    const rows: Record<string, string>[] = [];
+    members.forEach((m) => {
+      if (m.tasks.length === 0) {
+        rows.push({ Member: m.name, Task: "No updates", Status: "", SubTasks: "" });
+      } else {
+        m.tasks.forEach((t, i) => {
+          rows.push({
+            Member: i === 0 ? m.name : "",
+            Task: `${i + 1}. ${t.text}`,
+            Status: t.statusLabel || "",
+            SubTasks: t.subTasks.join(", "),
+          });
+        });
+      }
+    });
+    if (attendance.length > 0) {
+      rows.push({ Member: "", Task: "", Status: "", SubTasks: "" });
+      rows.push({ Member: "ATTENDANCE", Task: "", Status: "", SubTasks: "" });
+      attendance.forEach((a) => {
+        rows.push({ Member: a.name, Task: a.status, Status: a.reason || "", SubTasks: "" });
+      });
+    }
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Daily Brief");
+    XLSX.writeFile(wb, `daily-brief-${formatDateISO(selectedDate)}.xlsx`);
+    toast.success("Excel file downloaded");
+  };
+
   const handleFinalize = async () => {
     try {
       await lockDate(formatDateISO(selectedDate));
@@ -262,18 +297,22 @@ export default function ReportsPage() {
       {generated && (
         <>
           {/* Editor + Preview */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <Card className="border-0 shadow-sm bg-white">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[13px] font-semibold text-gray-600 flex items-center gap-1.5">
                   <FileText className="h-3.5 w-3.5" /> Edit Report
+                  <span className="text-[10px] text-gray-400 font-normal ml-2">Use the toolbar to format text with bold, italic, underline, headings, and lists</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  value={reportText}
-                  onChange={(e) => setReportText(e.target.value)}
-                  className="min-h-[450px] font-mono text-[12px] leading-relaxed bg-gray-50/60 border-gray-200"
+                <RichTextEditor
+                  content={reportHtml}
+                  onChange={(html) => {
+                    setReportHtml(html);
+                    setReportText(html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&"));
+                  }}
+                  mode="full"
                 />
               </CardContent>
             </Card>
@@ -287,10 +326,9 @@ export default function ReportsPage() {
               <CardContent>
                 <div
                   ref={previewRef}
-                  className="min-h-[450px] p-5 bg-gradient-to-b from-gray-50/80 to-white border border-gray-100 rounded-lg whitespace-pre-wrap text-[13px] font-sans leading-[1.7] text-gray-800"
-                >
-                  {reportText}
-                </div>
+                  className="min-h-[300px] p-5 bg-gradient-to-b from-gray-50/80 to-white border border-gray-100 rounded-lg prose prose-sm max-w-none text-[13px] leading-[1.7] text-gray-800"
+                  dangerouslySetInnerHTML={{ __html: reportHtml }}
+                />
               </CardContent>
             </Card>
           </div>
@@ -309,6 +347,9 @@ export default function ReportsPage() {
               </Button>
               <Button variant="outline" onClick={handleDownloadPDF} size="sm" className="text-xs">
                 <Download className="h-3.5 w-3.5 mr-1.5" /> PDF
+              </Button>
+              <Button variant="outline" onClick={handleDownloadXlsx} size="sm" className="text-xs">
+                <Download className="h-3.5 w-3.5 mr-1.5" /> Excel
               </Button>
               <Button variant="outline" onClick={handlePrint} size="sm" className="text-xs">
                 <Printer className="h-3.5 w-3.5 mr-1.5" /> Print

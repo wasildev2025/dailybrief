@@ -145,3 +145,47 @@ export async function getAttendanceStats(date: string) {
 
   return { present, absent, leave, halfDay, remote, totalMembers, unmarked: totalMembers - present - absent - leave - halfDay - remote };
 }
+
+export interface BulkAttendanceEntry {
+  userId: string;
+  status: AttendanceStatusType;
+  reason?: string;
+}
+
+export async function bulkSaveAttendance(date: string, entries: BulkAttendanceEntry[]) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") {
+    throw new Error("Unauthorized");
+  }
+
+  const dateObj = new Date(date);
+
+  const validEntries = entries.filter((e) => e.status);
+
+  for (const entry of validEntries) {
+    if (REASON_REQUIRED.includes(entry.status) && (!entry.reason || !entry.reason.trim())) {
+      throw new Error(`Reason is required for ${entry.status.replace("_", " ").toLowerCase()}`);
+    }
+  }
+
+  await prisma.$transaction(
+    validEntries.map((entry) =>
+      prisma.attendance.upsert({
+        where: { userId_date: { userId: entry.userId, date: dateObj } },
+        create: {
+          userId: entry.userId,
+          date: dateObj,
+          status: entry.status,
+          reason: entry.reason?.trim() || null,
+        },
+        update: {
+          status: entry.status,
+          reason: entry.reason?.trim() || null,
+        },
+      })
+    )
+  );
+
+  revalidatePath("/dashboard");
+  return { success: true, count: validEntries.length };
+}

@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   getAllAttendanceForDate,
-  adminSaveAttendance,
+  bulkSaveAttendance,
+  BulkAttendanceEntry,
 } from "@/actions/attendance-actions";
 import { formatDateISO } from "@/lib/date-utils";
 import { toast } from "sonner";
-import { Loader2, Save, UserCheck } from "lucide-react";
+import { Loader2, Save, UserCheck, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STATUSES = [
@@ -35,12 +36,11 @@ interface AdminAttendanceViewProps {
 export function AdminAttendanceView({ selectedDate }: AdminAttendanceViewProps) {
   const [data, setData] = useState<UserAttendance[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editState, setEditState] = useState<Record<string, { status: string; reason: string }>>({});
-  const [savingUser, setSavingUser] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [selectedDate]);
+  useEffect(() => { loadData(); }, [selectedDate]);
 
   const loadData = async () => {
     setLoading(true);
@@ -55,6 +55,7 @@ export function AdminAttendanceView({ selectedDate }: AdminAttendanceViewProps) 
         };
       });
       setEditState(edits);
+      setHasChanges(false);
     } catch {
       toast.error("Failed to load attendance");
     } finally {
@@ -65,8 +66,9 @@ export function AdminAttendanceView({ selectedDate }: AdminAttendanceViewProps) 
   const handleStatusChange = (userId: string, status: string) => {
     setEditState((prev) => ({
       ...prev,
-      [userId]: { ...prev[userId], status, reason: status === "PRESENT" ? "" : prev[userId]?.reason || "" },
+      [userId]: { ...prev[userId], status, reason: status === "PRESENT" || status === "REMOTE" ? "" : prev[userId]?.reason || "" },
     }));
+    setHasChanges(true);
   };
 
   const handleReasonChange = (userId: string, reason: string) => {
@@ -74,27 +76,46 @@ export function AdminAttendanceView({ selectedDate }: AdminAttendanceViewProps) 
       ...prev,
       [userId]: { ...prev[userId], reason },
     }));
+    setHasChanges(true);
   };
 
-  const handleSave = async (userId: string) => {
-    const state = editState[userId];
-    if (!state?.status) {
-      toast.error("Select a status first");
+  const handleMarkAllPresent = () => {
+    const newState: Record<string, { status: string; reason: string }> = {};
+    data.forEach(({ user }) => {
+      newState[user.id] = { status: "PRESENT", reason: "" };
+    });
+    setEditState(newState);
+    setHasChanges(true);
+    toast.info("All marked as Present — click Save All to confirm");
+  };
+
+  const handleBulkSave = async () => {
+    const entries: BulkAttendanceEntry[] = [];
+    for (const { user } of data) {
+      const state = editState[user.id];
+      if (!state?.status) continue;
+      if (REASON_REQUIRED.includes(state.status) && !state.reason.trim()) {
+        toast.error(`Reason required for ${user.name} (${state.status.replace("_", " ")})`);
+        return;
+      }
+      entries.push({ userId: user.id, status: state.status as any, reason: state.reason || undefined });
+    }
+
+    if (entries.length === 0) {
+      toast.error("Select at least one status to save");
       return;
     }
-    if (REASON_REQUIRED.includes(state.status) && !state.reason.trim()) {
-      toast.error("Reason is required for this status");
-      return;
-    }
-    setSavingUser(userId);
+
+    setSaving(true);
     try {
-      await adminSaveAttendance(userId, formatDateISO(selectedDate), state.status as any, state.reason);
-      toast.success("Attendance saved");
+      const result = await bulkSaveAttendance(formatDateISO(selectedDate), entries);
+      toast.success(`Attendance saved for ${result.count} member${result.count !== 1 ? "s" : ""}`);
+      setHasChanges(false);
       loadData();
     } catch (error: any) {
-      toast.error(error.message || "Failed to save");
+      toast.error(error.message || "Failed to save attendance");
     } finally {
-      setSavingUser(null);
+      setSaving(false);
     }
   };
 
@@ -111,10 +132,15 @@ export function AdminAttendanceView({ selectedDate }: AdminAttendanceViewProps) 
   return (
     <Card className="border-0 shadow-sm bg-white">
       <CardHeader className="pb-3">
-        <CardTitle className="text-[15px] font-semibold text-gray-900 flex items-center gap-2">
-          <UserCheck className="h-4 w-4 text-gray-500" />
-          Team Attendance
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-[15px] font-semibold text-gray-900 flex items-center gap-2">
+            <UserCheck className="h-4 w-4 text-gray-500" />
+            Team Attendance
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={handleMarkAllPresent} className="text-[11px] h-7">
+            <CheckCheck className="h-3.5 w-3.5 mr-1" /> Mark All Present
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <div className="divide-y divide-gray-100">
@@ -155,29 +181,35 @@ export function AdminAttendanceView({ selectedDate }: AdminAttendanceViewProps) 
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  {needsReason && (
-                    <Input
-                      value={state.reason}
-                      onChange={(e) => handleReasonChange(user.id, e.target.value)}
-                      placeholder="Reason..."
-                      className="flex-1 h-8 text-xs"
-                    />
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleSave(user.id)}
-                    disabled={!state.status || savingUser === user.id}
-                    className="h-8 text-xs"
-                  >
-                    {savingUser === user.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
-                    Save
-                  </Button>
-                </div>
+                {needsReason && (
+                  <Input
+                    value={state.reason}
+                    onChange={(e) => handleReasonChange(user.id, e.target.value)}
+                    placeholder={REASON_REQUIRED.includes(state.status) ? "Reason (required)..." : "Reason (optional)..."}
+                    className="h-8 text-xs mt-1"
+                  />
+                )}
               </div>
             );
           })}
+        </div>
+
+        {/* Bulk Save Bar */}
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] text-gray-500">
+              {Object.values(editState).filter((s) => s.status).length} of {data.length} members have a status set
+            </span>
+            <Button
+              onClick={handleBulkSave}
+              disabled={saving || !hasChanges}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              size="sm"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+              Save All Attendance
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

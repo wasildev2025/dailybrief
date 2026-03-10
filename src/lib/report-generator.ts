@@ -3,6 +3,7 @@ import { formatDateDDMMMYY } from "./date-utils";
 export interface ReportTask {
   text: string;
   subTasks: string[];
+  statusLabel?: string | null;
 }
 
 export interface ReportMember {
@@ -53,7 +54,8 @@ export function generateReportText(config: ReportConfig): string {
     lines.push(`${config.memberPrefix} ${member.name}.`);
     if (member.tasks.length > 0) {
       member.tasks.forEach((task, i) => {
-        lines.push(`${i + 1}. ${task.text}`);
+        const statusSuffix = task.statusLabel ? ` - ${task.statusLabel}` : "";
+        lines.push(`${i + 1}. ${task.text}${statusSuffix}`);
         if (task.subTasks.length > 0) {
           task.subTasks.forEach((sub, si) => {
             lines.push(`   ${i + 1}.${si + 1}. ${sub}`);
@@ -96,7 +98,8 @@ export function generateReportHTML(config: ReportConfig): string {
               const subHTML = t.subTasks.length > 0
                 ? `<ul style="margin:2px 0 4px 16px;padding:0;list-style:disc;">${t.subTasks.map((s) => `<li style="margin-bottom:1px;font-size:0.9em;">${s}</li>`).join("")}</ul>`
                 : "";
-              return `<li style="margin-bottom:4px;">${t.text}${subHTML}</li>`;
+              const statusHTML = t.statusLabel ? ` <span style="color:#666;font-style:italic;">- ${t.statusLabel}</span>` : "";
+              return `<li style="margin-bottom:4px;">${t.text}${statusHTML}${subHTML}</li>`;
             }).join("")}</ol>`
           : `<p style="margin:4px 0 0 20px;color:#666;">No updates submitted.</p>`;
       return `<div style="margin-bottom:16px;"><p style="font-weight:600;margin:0;">${config.memberPrefix} ${member.name}.</p>${tasksHTML}</div>`;

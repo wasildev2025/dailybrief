@@ -24,7 +24,10 @@ export async function getUpdateForDate(date: string, userId?: string) {
     include: {
       tasks: {
         orderBy: { sortOrder: "asc" },
-        include: { subTasks: { orderBy: { sortOrder: "asc" } } },
+        include: {
+          subTasks: { orderBy: { sortOrder: "asc" } },
+          taskStatus: true,
+        },
       },
       adminNotes: {
         include: { createdBy: { select: { name: true } } },
@@ -40,6 +43,7 @@ export async function getUpdateForDate(date: string, userId?: string) {
 export interface TaskInput {
   text: string;
   subTasks: string[];
+  statusId?: string | null;
 }
 
 export async function saveUpdate(
@@ -68,8 +72,8 @@ export async function saveUpdate(
     },
   });
 
-  if (existing && existing.status === "REVIEWED" && session.user.role !== "ADMIN") {
-    throw new Error("This update has been reviewed and cannot be edited");
+  if (existing && (existing.status === "REVIEWED" || existing.status === "FINALIZED") && session.user.role !== "ADMIN") {
+    throw new Error("This update has been reviewed/finalized and cannot be edited");
   }
 
   const update = await prisma.dailyUpdate.upsert({
@@ -96,6 +100,7 @@ export async function saveUpdate(
       data: {
         dailyUpdateId: update.id,
         text: task.text.trim(),
+        statusId: task.statusId || null,
         sortOrder: i,
       },
     });
@@ -119,7 +124,7 @@ export async function saveUpdate(
 export async function adminSaveUpdate(
   updateId: string,
   tasks: TaskInput[],
-  status?: "DRAFT" | "SUBMITTED" | "REVIEWED"
+  status?: "DRAFT" | "SUBMITTED" | "REVIEWED" | "FINALIZED"
 ) {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") {
@@ -146,6 +151,7 @@ export async function adminSaveUpdate(
       data: {
         dailyUpdateId: updateId,
         text: task.text.trim(),
+        statusId: task.statusId || null,
         sortOrder: i,
       },
     });
@@ -164,6 +170,54 @@ export async function adminSaveUpdate(
 
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+export async function adminCreateUpdateForUser(
+  userId: string,
+  date: string,
+  tasks: TaskInput[],
+  status: "DRAFT" | "SUBMITTED" | "REVIEWED" | "FINALIZED" = "SUBMITTED"
+) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") {
+    throw new Error("Unauthorized");
+  }
+
+  const dateObj = new Date(date);
+  const filteredTasks = tasks.filter((t) => t.text.trim() !== "");
+
+  const update = await prisma.dailyUpdate.upsert({
+    where: { userId_date: { userId, date: dateObj } },
+    create: { userId, date: dateObj, status },
+    update: { status },
+  });
+
+  await prisma.dailyTask.deleteMany({ where: { dailyUpdateId: update.id } });
+
+  for (let i = 0; i < filteredTasks.length; i++) {
+    const task = filteredTasks[i];
+    const created = await prisma.dailyTask.create({
+      data: {
+        dailyUpdateId: update.id,
+        text: task.text.trim(),
+        statusId: task.statusId || null,
+        sortOrder: i,
+      },
+    });
+    const filteredSubs = task.subTasks.filter((s) => s.trim() !== "");
+    if (filteredSubs.length > 0) {
+      await prisma.subTask.createMany({
+        data: filteredSubs.map((text, si) => ({
+          dailyTaskId: created.id,
+          text: text.trim(),
+          sortOrder: si,
+        })),
+      });
+    }
+  }
+
+  revalidatePath("/dashboard");
+  return { success: true, id: update.id };
 }
 
 export async function addAdminNote(updateId: string, note: string) {
@@ -201,7 +255,10 @@ export async function getAllUpdatesForDate(date: string) {
         include: {
           tasks: {
             orderBy: { sortOrder: "asc" },
-            include: { subTasks: { orderBy: { sortOrder: "asc" } } },
+            include: {
+              subTasks: { orderBy: { sortOrder: "asc" } },
+              taskStatus: true,
+            },
           },
           adminNotes: {
             include: { createdBy: { select: { name: true } } },
@@ -233,7 +290,10 @@ export async function getMyUpdates(limit = 30) {
     include: {
       tasks: {
         orderBy: { sortOrder: "asc" },
-        include: { subTasks: { orderBy: { sortOrder: "asc" } } },
+        include: {
+          subTasks: { orderBy: { sortOrder: "asc" } },
+          taskStatus: true,
+        },
       },
     },
     orderBy: { date: "desc" },
@@ -340,6 +400,7 @@ export async function copyPreviousDayTasks(date: string) {
     tasks: previousUpdate.tasks.map((t) => ({
       text: t.text,
       subTasks: t.subTasks.map((s) => s.text),
+      statusId: t.statusId || null,
     })),
   };
 }
