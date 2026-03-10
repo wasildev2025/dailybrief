@@ -3,6 +3,8 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { logActivity } from "@/actions/activity-actions";
+import { createNotificationsForAdmins } from "@/actions/notification-actions";
 
 export async function getUpdateForDate(date: string, userId?: string) {
   const session = await auth();
@@ -117,6 +119,22 @@ export async function saveUpdate(
     }
   }
 
+  await logActivity(
+    status === "SUBMITTED" ? "submitted" : "saved_draft",
+    "update",
+    update.id,
+    `${filteredTasks.length} task(s) for ${date}`
+  );
+
+  if (status === "SUBMITTED") {
+    await createNotificationsForAdmins(
+      "Update Submitted",
+      `${session.user.name || "A member"} submitted their daily update for ${date}`,
+      "task",
+      "/dashboard/admin"
+    );
+  }
+
   revalidatePath("/dashboard");
   return { success: true, id: update.id };
 }
@@ -168,6 +186,9 @@ export async function adminSaveUpdate(
     }
   }
 
+  const actionLabel = status === "FINALIZED" ? "finalized" : status === "REVIEWED" ? "reviewed" : "admin_saved";
+  await logActivity(actionLabel, "update", updateId, `Admin ${actionLabel} update with ${filteredTasks.length} task(s)`);
+
   revalidatePath("/dashboard");
   return { success: true };
 }
@@ -215,6 +236,8 @@ export async function adminCreateUpdateForUser(
       });
     }
   }
+
+  await logActivity("admin_created_update", "update", update.id, `Admin created update for user on ${date}`);
 
   revalidatePath("/dashboard");
   return { success: true, id: update.id };
@@ -315,6 +338,8 @@ export async function lockDate(date: string) {
     update: {},
   });
 
+  await logActivity("locked_date", "date", date, `Locked date ${date}`);
+
   revalidatePath("/dashboard");
   return { success: true };
 }
@@ -328,6 +353,8 @@ export async function unlockDate(date: string) {
   await prisma.lockedDate.delete({
     where: { date: new Date(date) },
   }).catch(() => {});
+
+  await logActivity("unlocked_date", "date", date, `Unlocked date ${date}`);
 
   revalidatePath("/dashboard");
   return { success: true };

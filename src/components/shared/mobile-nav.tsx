@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Users, Settings, LogOut,
   ClipboardList, CalendarDays, Menu, X, Zap, BarChart3,
+  Activity, CalendarRange,
 } from "lucide-react";
 import { logoutAction } from "@/actions/auth-actions";
 
@@ -19,7 +20,9 @@ const adminLinks = [
   { href: "/dashboard/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/admin/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/dashboard/admin/reports", label: "Reports", icon: FileText },
+  { href: "/dashboard/admin/reports/range", label: "Date Range", icon: CalendarRange },
   { href: "/dashboard/admin/kpi", label: "KPI", icon: BarChart3 },
+  { href: "/dashboard/admin/activity", label: "Activity Log", icon: Activity },
   { href: "/dashboard/admin/users", label: "Users", icon: Users },
   { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
 ];

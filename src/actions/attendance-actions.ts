@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { logActivity } from "@/actions/activity-actions";
 
 type AttendanceStatusType = "PRESENT" | "ABSENT" | "LEAVE" | "HALF_DAY" | "REMOTE";
 
@@ -185,6 +186,8 @@ export async function bulkSaveAttendance(date: string, entries: BulkAttendanceEn
       })
     )
   );
+
+  await logActivity("bulk_attendance", "attendance", date, `Saved attendance for ${validEntries.length} members on ${date}`);
 
   revalidatePath("/dashboard");
   return { success: true, count: validEntries.length };

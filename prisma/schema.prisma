@@ -39,9 +39,11 @@ model User {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  dailyUpdates DailyUpdate[]
-  adminNotes   AdminNote[]   @relation("AdminNoteCreator")
-  attendances  Attendance[]
+  dailyUpdates  DailyUpdate[]
+  adminNotes    AdminNote[]      @relation("AdminNoteCreator")
+  attendances   Attendance[]
+  activityLogs  ActivityLog[]
+  notifications Notification[]
 
   @@map("users")
 }

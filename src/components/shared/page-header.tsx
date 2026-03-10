@@ -3,8 +3,8 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { NotificationBell } from "@/components/shared/notification-bell";
 
 const breadcrumbLabels: Record<string, string> = {
   dashboard: "Dashboard",
@@ -12,8 +12,11 @@ const breadcrumbLabels: Record<string, string> = {
   member: "Member",
   calendar: "Calendar",
   reports: "Reports",
+  range: "Date Range",
   users: "Users",
   settings: "Settings",
+  kpi: "KPI",
+  activity: "Activity Log",
 };
 
 export function PageHeader() {
@@ -27,12 +30,9 @@ export function PageHeader() {
   }));
 
   return (
-    <div className="flex items-center justify-between h-12 px-6 lg:px-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
+    <div className="flex items-center justify-between h-12 px-4 sm:px-6 lg:px-10 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
       <nav className="flex items-center gap-1 text-[12px]">
-        <Link
-          href="/dashboard"
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-        >
+        <Link href="/dashboard" className="text-gray-400 hover:text-gray-600 transition-colors">
           <Home className="h-3.5 w-3.5" />
         </Link>
         {breadcrumbs.slice(1).map((crumb) => (
@@ -48,9 +48,12 @@ export function PageHeader() {
           </span>
         ))}
       </nav>
-      <span className="text-[11px] text-gray-400 font-medium hidden sm:block">
-        {format(new Date(), "EEEE, MMMM d, yyyy")}
-      </span>
+      <div className="flex items-center gap-3">
+        <NotificationBell />
+        <span className="text-[11px] text-gray-400 font-medium hidden sm:block">
+          {format(new Date(), "EEEE, MMMM d, yyyy")}
+        </span>
+      </div>
     </div>
   );
 }

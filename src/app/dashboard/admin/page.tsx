@@ -7,6 +7,7 @@ import {
   ArrowRight, Sparkles, CalendarDays, BarChart3,
 } from "lucide-react";
 import { AdminDateView } from "@/components/admin/admin-date-view";
+import { SendRemindersButton } from "@/components/admin/send-reminders-button";
 import { formatDateISO, formatDateForDisplay } from "@/lib/date-utils";
 import Link from "next/link";
 
@@ -47,6 +48,7 @@ export default async function AdminDashboard() {
               <p className="text-white/70 text-sm mt-1">{formatDateForDisplay(new Date())} — Here&apos;s your team&apos;s status today</p>
             </div>
             <div className="flex gap-2">
+              <SendRemindersButton />
               <Link
                 href="/dashboard/admin/reports"
                 className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm hover:bg-white/25 transition-colors text-white text-[12px] font-medium rounded-lg px-3.5 py-2"
