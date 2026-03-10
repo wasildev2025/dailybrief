@@ -22,7 +22,10 @@ export async function getUpdateForDate(date: string, userId?: string) {
       },
     },
     include: {
-      tasks: { orderBy: { sortOrder: "asc" } },
+      tasks: {
+        orderBy: { sortOrder: "asc" },
+        include: { subTasks: { orderBy: { sortOrder: "asc" } } },
+      },
       adminNotes: {
         include: { createdBy: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
@@ -34,15 +37,20 @@ export async function getUpdateForDate(date: string, userId?: string) {
   return update;
 }
 
+export interface TaskInput {
+  text: string;
+  subTasks: string[];
+}
+
 export async function saveUpdate(
   date: string,
-  tasks: string[],
+  tasks: TaskInput[],
   status: "DRAFT" | "SUBMITTED"
 ) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
 
-  const filteredTasks = tasks.filter((t) => t.trim() !== "");
+  const filteredTasks = tasks.filter((t) => t.text.trim() !== "");
   if (status === "SUBMITTED" && filteredTasks.length === 0) {
     throw new Error("Cannot submit an update with no tasks");
   }
@@ -82,14 +90,26 @@ export async function saveUpdate(
     where: { dailyUpdateId: update.id },
   });
 
-  if (filteredTasks.length > 0) {
-    await prisma.dailyTask.createMany({
-      data: filteredTasks.map((text, i) => ({
+  for (let i = 0; i < filteredTasks.length; i++) {
+    const task = filteredTasks[i];
+    const created = await prisma.dailyTask.create({
+      data: {
         dailyUpdateId: update.id,
-        text: text.trim(),
+        text: task.text.trim(),
         sortOrder: i,
-      })),
+      },
     });
+
+    const filteredSubs = task.subTasks.filter((s) => s.trim() !== "");
+    if (filteredSubs.length > 0) {
+      await prisma.subTask.createMany({
+        data: filteredSubs.map((text, si) => ({
+          dailyTaskId: created.id,
+          text: text.trim(),
+          sortOrder: si,
+        })),
+      });
+    }
   }
 
   revalidatePath("/dashboard");
@@ -98,7 +118,7 @@ export async function saveUpdate(
 
 export async function adminSaveUpdate(
   updateId: string,
-  tasks: string[],
+  tasks: TaskInput[],
   status?: "DRAFT" | "SUBMITTED" | "REVIEWED"
 ) {
   const session = await auth();
@@ -106,7 +126,7 @@ export async function adminSaveUpdate(
     throw new Error("Unauthorized");
   }
 
-  const filteredTasks = tasks.filter((t) => t.trim() !== "");
+  const filteredTasks = tasks.filter((t) => t.text.trim() !== "");
 
   const updateData: any = {};
   if (status) updateData.status = status;
@@ -120,14 +140,26 @@ export async function adminSaveUpdate(
     where: { dailyUpdateId: updateId },
   });
 
-  if (filteredTasks.length > 0) {
-    await prisma.dailyTask.createMany({
-      data: filteredTasks.map((text, i) => ({
+  for (let i = 0; i < filteredTasks.length; i++) {
+    const task = filteredTasks[i];
+    const created = await prisma.dailyTask.create({
+      data: {
         dailyUpdateId: updateId,
-        text: text.trim(),
+        text: task.text.trim(),
         sortOrder: i,
-      })),
+      },
     });
+
+    const filteredSubs = task.subTasks.filter((s) => s.trim() !== "");
+    if (filteredSubs.length > 0) {
+      await prisma.subTask.createMany({
+        data: filteredSubs.map((text, si) => ({
+          dailyTaskId: created.id,
+          text: text.trim(),
+          sortOrder: si,
+        })),
+      });
+    }
   }
 
   revalidatePath("/dashboard");
@@ -167,7 +199,10 @@ export async function getAllUpdatesForDate(date: string) {
       dailyUpdates: {
         where: { date: dateObj },
         include: {
-          tasks: { orderBy: { sortOrder: "asc" } },
+          tasks: {
+            orderBy: { sortOrder: "asc" },
+            include: { subTasks: { orderBy: { sortOrder: "asc" } } },
+          },
           adminNotes: {
             include: { createdBy: { select: { name: true } } },
             orderBy: { createdAt: "desc" },
@@ -196,7 +231,10 @@ export async function getMyUpdates(limit = 30) {
   return prisma.dailyUpdate.findMany({
     where: { userId: session.user.id },
     include: {
-      tasks: { orderBy: { sortOrder: "asc" } },
+      tasks: {
+        orderBy: { sortOrder: "asc" },
+        include: { subTasks: { orderBy: { sortOrder: "asc" } } },
+      },
     },
     orderBy: { date: "desc" },
     take: limit,
@@ -285,13 +323,23 @@ export async function copyPreviousDayTasks(date: string) {
       userId: session.user.id,
       date: { lt: targetDate },
     },
-    include: { tasks: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      tasks: {
+        orderBy: { sortOrder: "asc" },
+        include: { subTasks: { orderBy: { sortOrder: "asc" } } },
+      },
+    },
     orderBy: { date: "desc" },
   });
 
   if (!previousUpdate || previousUpdate.tasks.length === 0) {
-    return { tasks: [] };
+    return { tasks: [] as TaskInput[] };
   }
 
-  return { tasks: previousUpdate.tasks.map((t) => t.text) };
+  return {
+    tasks: previousUpdate.tasks.map((t) => ({
+      text: t.text,
+      subTasks: t.subTasks.map((s) => s.text),
+    })),
+  };
 }

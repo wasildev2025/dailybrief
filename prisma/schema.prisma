@@ -72,9 +72,24 @@ model DailyTask {
   updatedAt     DateTime    @updatedAt
 
   dailyUpdate   DailyUpdate @relation(fields: [dailyUpdateId], references: [id], onDelete: Cascade)
+  subTasks      SubTask[]
 
   @@index([dailyUpdateId])
   @@map("daily_tasks")
+}
+
+model SubTask {
+  id          String    @id @default(cuid())
+  dailyTaskId String
+  text        String
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  dailyTask   DailyTask @relation(fields: [dailyTaskId], references: [id], onDelete: Cascade)
+
+  @@index([dailyTaskId])
+  @@map("sub_tasks")
 }
 
 model AdminNote {

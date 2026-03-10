@@ -30,8 +30,12 @@ import {
   Plus,
   Trash2,
   ListChecks,
+  ChevronDown,
+  ChevronRight,
+  CornerDownRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { TaskInput } from "@/actions/update-actions";
 
 interface UserUpdate {
   user: {
@@ -44,9 +48,15 @@ interface UserUpdate {
   update: {
     id: string;
     status: string;
-    tasks: { id: string; text: string; sortOrder: number }[];
+    tasks: { id: string; text: string; sortOrder: number; subTasks: { id: string; text: string; sortOrder: number }[] }[];
     adminNotes: { id: string; note: string; createdBy: { name: string }; createdAt: Date }[];
   } | null;
+}
+
+interface EditableTask {
+  text: string;
+  subTasks: string[];
+  expanded: boolean;
 }
 
 export function AdminDateView() {
@@ -54,7 +64,7 @@ export function AdminDateView() {
   const [userUpdates, setUserUpdates] = useState<UserUpdate[]>([]);
   const [loading, setLoading] = useState(false);
   const [locked, setLocked] = useState(false);
-  const [editedTasks, setEditedTasks] = useState<Record<string, string[]>>({});
+  const [editedTasks, setEditedTasks] = useState<Record<string, EditableTask[]>>({});
   const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<"tasks" | "attendance">("tasks");
 
@@ -73,10 +83,14 @@ export function AdminDateView() {
       setUserUpdates(data);
       setLocked(isLck);
 
-      const edits: Record<string, string[]> = {};
+      const edits: Record<string, EditableTask[]> = {};
       data.forEach((item: UserUpdate) => {
         if (item.update) {
-          edits[item.update.id] = item.update.tasks.map((t) => t.text);
+          edits[item.update.id] = item.update.tasks.map((t) => ({
+            text: t.text,
+            subTasks: t.subTasks.map((s) => s.text),
+            expanded: t.subTasks.length > 0,
+          }));
         }
       });
       setEditedTasks(edits);
@@ -89,7 +103,11 @@ export function AdminDateView() {
 
   const handleSaveTasks = async (updateId: string, status?: "DRAFT" | "SUBMITTED" | "REVIEWED") => {
     try {
-      await adminSaveUpdate(updateId, editedTasks[updateId] || [], status);
+      const payload: TaskInput[] = (editedTasks[updateId] || []).map((t) => ({
+        text: t.text,
+        subTasks: t.subTasks,
+      }));
+      await adminSaveUpdate(updateId, payload, status);
       toast.success(status === "REVIEWED" ? "Marked as reviewed" : "Update saved");
       loadData();
     } catch (error: any) {
@@ -129,7 +147,7 @@ export function AdminDateView() {
   const updateTaskText = (updateId: string, index: number, value: string) => {
     setEditedTasks((prev) => {
       const tasks = [...(prev[updateId] || [])];
-      tasks[index] = value;
+      tasks[index] = { ...tasks[index], text: value };
       return { ...prev, [updateId]: tasks };
     });
   };
@@ -137,7 +155,7 @@ export function AdminDateView() {
   const addTaskField = (updateId: string) => {
     setEditedTasks((prev) => ({
       ...prev,
-      [updateId]: [...(prev[updateId] || []), ""],
+      [updateId]: [...(prev[updateId] || []), { text: "", subTasks: [], expanded: false }],
     }));
   };
 
@@ -145,7 +163,47 @@ export function AdminDateView() {
     setEditedTasks((prev) => {
       const tasks = [...(prev[updateId] || [])];
       tasks.splice(index, 1);
-      return { ...prev, [updateId]: tasks.length ? tasks : [""] };
+      return { ...prev, [updateId]: tasks.length ? tasks : [{ text: "", subTasks: [], expanded: false }] };
+    });
+  };
+
+  const toggleTaskExpanded = (updateId: string, index: number) => {
+    setEditedTasks((prev) => {
+      const tasks = [...(prev[updateId] || [])];
+      const task = tasks[index];
+      if (!task.expanded && task.subTasks.length === 0) {
+        tasks[index] = { ...task, expanded: true, subTasks: [""] };
+      } else {
+        tasks[index] = { ...task, expanded: !task.expanded };
+      }
+      return { ...prev, [updateId]: tasks };
+    });
+  };
+
+  const addSubTaskField = (updateId: string, taskIndex: number) => {
+    setEditedTasks((prev) => {
+      const tasks = [...(prev[updateId] || [])];
+      tasks[taskIndex] = { ...tasks[taskIndex], subTasks: [...tasks[taskIndex].subTasks, ""], expanded: true };
+      return { ...prev, [updateId]: tasks };
+    });
+  };
+
+  const removeSubTaskField = (updateId: string, taskIndex: number, subIndex: number) => {
+    setEditedTasks((prev) => {
+      const tasks = [...(prev[updateId] || [])];
+      const subs = tasks[taskIndex].subTasks.filter((_, i) => i !== subIndex);
+      tasks[taskIndex] = { ...tasks[taskIndex], subTasks: subs, expanded: subs.length > 0 };
+      return { ...prev, [updateId]: tasks };
+    });
+  };
+
+  const updateSubTaskText = (updateId: string, taskIndex: number, subIndex: number, value: string) => {
+    setEditedTasks((prev) => {
+      const tasks = [...(prev[updateId] || [])];
+      const subs = [...tasks[taskIndex].subTasks];
+      subs[subIndex] = value;
+      tasks[taskIndex] = { ...tasks[taskIndex], subTasks: subs };
+      return { ...prev, [updateId]: tasks };
     });
   };
 
@@ -248,23 +306,64 @@ export function AdminDateView() {
                     {update ? (
                       <>
                         {(editedTasks[update.id] || []).map((task, idx) => (
-                          <div key={idx} className="flex items-center gap-2 group">
-                            <span className="text-[11px] text-gray-400 w-5 text-right flex-shrink-0 font-mono">
-                              {idx + 1}
-                            </span>
-                            <Input
-                              value={task}
-                              onChange={(e) => updateTaskText(update.id, idx, e.target.value)}
-                              className="flex-1 h-8 text-sm bg-gray-50/60 border-gray-200"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeTaskField(update.id, idx)}
-                              className="h-7 w-7 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                          <div key={idx} className="group/atask">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] text-gray-400 w-5 text-right flex-shrink-0 font-mono">
+                                {idx + 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => toggleTaskExpanded(update.id, idx)}
+                                className={cn(
+                                  "h-5 w-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors flex-shrink-0",
+                                  task.expanded && "text-indigo-600 bg-indigo-50"
+                                )}
+                              >
+                                {task.expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                              </button>
+                              <Input
+                                value={task.text}
+                                onChange={(e) => updateTaskText(update.id, idx, e.target.value)}
+                                className="flex-1 h-8 text-sm bg-gray-50/60 border-gray-200"
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeTaskField(update.id, idx)}
+                                className="h-7 w-7 text-gray-300 hover:text-red-500 opacity-0 group-hover/atask:opacity-100 transition-opacity"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            {task.expanded && (
+                              <div className="ml-[44px] mt-1 mb-1.5 pl-2.5 border-l-2 border-indigo-100 space-y-1">
+                                {task.subTasks.map((sub, si) => (
+                                  <div key={si} className="flex items-center gap-1.5 group/asub">
+                                    <CornerDownRight className="h-2.5 w-2.5 text-gray-300 flex-shrink-0" />
+                                    <Input
+                                      value={sub}
+                                      onChange={(e) => updateSubTaskText(update.id, idx, si, e.target.value)}
+                                      className="flex-1 h-6 text-[11px] bg-indigo-50/30 border-indigo-100"
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => removeSubTaskField(update.id, idx, si)}
+                                      className="h-5 w-5 text-gray-300 hover:text-red-500 opacity-0 group-hover/asub:opacity-100 transition-opacity"
+                                    >
+                                      <Trash2 className="h-2.5 w-2.5" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => addSubTaskField(update.id, idx)}
+                                  className="flex items-center gap-1 text-[10px] font-medium text-indigo-500 hover:text-indigo-700 pl-4 py-0.5 transition-colors"
+                                >
+                                  <Plus className="h-2.5 w-2.5" /> Add subtask
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ))}
 

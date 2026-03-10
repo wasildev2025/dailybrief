@@ -16,6 +16,7 @@ import {
   generateReportHTML,
   ReportConfig,
   ReportMember,
+  ReportTask,
   ReportAttendance,
 } from "@/lib/report-generator";
 import { toast } from "sonner";
@@ -65,7 +66,10 @@ export default function ReportsPage() {
         .filter((d) => d.user.role === "MEMBER")
         .map((d) => ({
           name: d.user.name,
-          tasks: d.update?.tasks.map((t) => t.text) || [],
+          tasks: d.update?.tasks.map((t) => ({
+            text: t.text,
+            subTasks: t.subTasks?.map((s) => s.text) || [],
+          })) || [],
         }));
 
       const attList: ReportAttendance[] = attData.map((a) => ({
@@ -145,6 +149,12 @@ export default function ReportsPage() {
         const wrapped = doc.splitTextToSize(cleanLine, pageWidth);
         doc.text(wrapped, margin, y);
         y += wrapped.length * 5 + 2;
+      } else if (line.match(/^\s+\d+\.\d+\./)) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        const wrapped = doc.splitTextToSize(line.trim(), pageWidth - 20);
+        doc.text(wrapped, margin + 12, y);
+        y += wrapped.length * 4.5;
       } else if (line.match(/^\d+\./)) {
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");

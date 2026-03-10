@@ -1,8 +1,13 @@
 import { formatDateDDMMMYY } from "./date-utils";
 
+export interface ReportTask {
+  text: string;
+  subTasks: string[];
+}
+
 export interface ReportMember {
   name: string;
-  tasks: string[];
+  tasks: ReportTask[];
 }
 
 export interface ReportAttendance {
@@ -48,7 +53,12 @@ export function generateReportText(config: ReportConfig): string {
     lines.push(`${config.memberPrefix} ${member.name}.`);
     if (member.tasks.length > 0) {
       member.tasks.forEach((task, i) => {
-        lines.push(`${i + 1}. ${task}`);
+        lines.push(`${i + 1}. ${task.text}`);
+        if (task.subTasks.length > 0) {
+          task.subTasks.forEach((sub, si) => {
+            lines.push(`   ${i + 1}.${si + 1}. ${sub}`);
+          });
+        }
       });
     } else {
       lines.push("No updates submitted.");
@@ -82,7 +92,12 @@ export function generateReportHTML(config: ReportConfig): string {
     .map((member) => {
       const tasksHTML =
         member.tasks.length > 0
-          ? `<ol style="margin:4px 0 0 20px;padding:0;">${member.tasks.map((t) => `<li style="margin-bottom:2px;">${t}</li>`).join("")}</ol>`
+          ? `<ol style="margin:4px 0 0 20px;padding:0;">${member.tasks.map((t) => {
+              const subHTML = t.subTasks.length > 0
+                ? `<ul style="margin:2px 0 4px 16px;padding:0;list-style:disc;">${t.subTasks.map((s) => `<li style="margin-bottom:1px;font-size:0.9em;">${s}</li>`).join("")}</ul>`
+                : "";
+              return `<li style="margin-bottom:4px;">${t.text}${subHTML}</li>`;
+            }).join("")}</ol>`
           : `<p style="margin:4px 0 0 20px;color:#666;">No updates submitted.</p>`;
       return `<div style="margin-bottom:16px;"><p style="font-weight:600;margin:0;">${config.memberPrefix} ${member.name}.</p>${tasksHTML}</div>`;
     })
